@@ -6,14 +6,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 public class EvolveAppTest {
 
     @Test
-    public void testWelcomeMessage() {
+    public void testGetWelcomeMessage() {
         EvolveApp app = new EvolveApp();
-        assertEquals("WELCOME TO EVOLVE TECHNOLOGIES", app.welcomeMessage());
-    }
-
-    @Test
-    public void testLearningMessage() {
-        EvolveApp app = new EvolveApp();
-        assertEquals("HAPPY LEARNING........................", app.learningMessage());
+        String expected = "WELCOME TO EVOLVE TECHNOLOGIES\nHAPPY LEARNING........................";
+        assertEquals(expected, app.getWelcomeMessage());
     }
 }
