@@ -1,0 +1,192 @@
+CODE Review:validating the code wether  it is written as per standard guidelince
+
+CODE COVERAGE:
+how much source code is tested by unit test cases.
+80%
+
+
+SONARQUBE:
+  
+it is continuous code quality management tool which continuously analyse and measures the quality of the code .
+
+Term	             Explanation
+Bug	             Code that can cause crashes or incorrect results
+Vulnerability	     Security risks in the code
+Code Smell	     Poor coding practices that may lead to bugs
+Coverage	     How much of the code is tested via unit tests
+Duplication	     Repeated code that should be refactored
+Maintainability	     Ease with which code can be maintained and updated
+Technical Debt	     Future work required to fix poor design or implementation
+
+
+
+sonarqube 2 components
+
+1. sonar scanner:
+
+it will go through the source code and generates the reports
+
+
+2: sonar server:
+ 
+engine: it categeriges the report into 3 categories
+       vulnerabilities: security loopholes
+       bugs: bad coding which leads to crashing
+       code smells : which doesnt followed the standard rules, they can lead to bugs
+
+H2 database: 
+
+      it will store  reports which were created by sonar scanner
+
+web server:
+
+  it will take the reports and dispaly the report in dashboard
+
+search engine:
+   
+  it will the search reports
+
+
+SONARQUBE INSTALLATION:
+======================
+vi install_sonarqube_clean.sh
+
+
+#!/bin/bash
+
+set -e
+
+# SonarQube version
+SONARQUBE_VERSION="10.4.1.88267"
+SONARQUBE_ZIP="sonarqube-${SONARQUBE_VERSION}.zip"
+SONARQUBE_DIR="/opt/sonarqube"
+
+echo "🔧 Installing Java 17 and utilities..."
+sudo apt update
+sudo apt install -y openjdk-17-jdk wget unzip
+
+echo "👤 Creating sonar user..."
+sudo useradd -r -s /bin/false sonar || true
+
+echo "⬇️ Downloading SonarQube..."
+wget -q https://binaries.sonarsource.com/Distribution/sonarqube/${SONARQUBE_ZIP} -P /tmp
+
+echo "📦 Extracting..."
+sudo unzip -q /tmp/${SONARQUBE_ZIP} -d /opt/
+sudo mv /opt/sonarqube-${SONARQUBE_VERSION} $SONARQUBE_DIR
+sudo chown -R sonar:sonar $SONARQUBE_DIR
+
+echo "🛠️ Configuring system settings..."
+sudo sysctl -w vm.max_map_count=262144
+echo "vm.max_map_count=262144" | sudo tee -a /etc/sysctl.conf
+
+echo "📝 Creating systemd service..."
+sudo tee /etc/systemd/system/sonarqube.service > /dev/null <<EOF
+[Unit]
+Description=SonarQube Service
+After=network.target
+
+[Service]
+Type=forking
+ExecStart=$SONARQUBE_DIR/bin/linux-x86-64/sonar.sh start
+ExecStop=$SONARQUBE_DIR/bin/linux-x86-64/sonar.sh stop
+User=sonar
+Group=sonar
+Restart=always
+LimitNOFILE=65536
+LimitNPROC=4096
+TimeoutSec=60
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+echo "🔁 Reloading and starting SonarQube..."
+sudo systemctl daemon-reload
+sudo systemctl enable sonarqube
+sudo systemctl start sonarqube
+
+echo "✅ Installation complete!"
+echo "🌐 Access SonarQube at: http://<your-server-ip>:9000"
+echo "🔑 Default credentials: admin / admin"
+
+chmod +x install_sonarqube_clean.sh
+
+sudo ./install_sonarqube_clean.sh
+
+
+ENABLE 9000 PORT
+
+change password
+
+
+quality profile :
+
+these are set of rules given we are applying to check the code  and generate the reports.
+
+
+
+quality gate:
+
+collections of conditions we are going to apply to pass the code.
+
+
+To generate token:
+
+my account  --->security ---> genrate token 
+
+name: jenkins-server type: user : exp: 30 days --> generate token
+
+only once visible  copy and  save it safey.
+
+
+
+Integration with jenkins:
+
+
+Manage jenkins --> configurations -->sonarqube installations --> add sonarqube-->
+
+name: SonarQube
+Server URL: http://54.255.190.218:9000
+Server authentication token: add --->kind : secrettext --> secret:paste the token generated --> id : sonar-token --> save
+
+
+Manage jenkins --> tools --> SonarQube Scanner installations --> Add SonarQube Scanner --> name: sonarqube scanner ,,click on install automatically--> save
+
+
+now create pipeline job and excute the pipeline build.
+
+check the sonarqube dashboard--> projects.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+stage('Quality Gate Check') {
+            steps {
+                timeout(time: 2, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+
+
+
+
