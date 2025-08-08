@@ -1,18 +1,24 @@
 package com.evolve;
 
 /**
- * EvolveApp provides welcome message for Evolve Technologies.
+ * This class provides a welcome message for Evolve Technologies.
  */
 public final class EvolveApp {
 
-    private static final String WELCOME_MESSAGE = "WELCOME TO EVOLVE TECHNOLOGIES";
-    private static final String LEARNING_MESSAGE = "HAPPY LEARNING........................";
+    private static final String LINE_SEPARATOR = System.lineSeparator();
+    private static final String WELCOME = "WELCOME TO EVOLVE TECHNOLOGIES";
+    private static final String MESSAGE = "HAPPY LEARNING........................";
+
+    private EvolveApp() {
+        // private constructor to prevent instantiation
+    }
 
     /**
-     * Returns the welcome message for display.
-     * @return a formatted welcome message
+     * Gets the formatted welcome message.
+     *
+     * @return the welcome message
      */
-    public String getWelcomeMessage() {
-        return WELCOME_MESSAGE + "\n" + LEARNING_MESSAGE;
+    public static String getWelcomeMessage() {
+        return WELCOME + LINE_SEPARATOR + MESSAGE;
     }
 }
