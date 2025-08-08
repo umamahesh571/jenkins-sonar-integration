@@ -6,7 +6,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git 'https://github.com/your-repo/evolve-tech.git'
+                git branch: 'main', url: 'https://github.com/umamahesh571/jenkins-sonar-integration.git'
             }
         }
         stage('SonarQube Analysis') {
