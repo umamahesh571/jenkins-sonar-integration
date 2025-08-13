@@ -1,4 +1,4 @@
-# SonarQube Installation and Jenkins Integration Guide
+# SonarQube Installation and Jenkins Integration Guide..
 
 ## 1. Install SonarQube Server (Ubuntu)
 
