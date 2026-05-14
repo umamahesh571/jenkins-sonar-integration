@@ -1,5 +1,8 @@
 pipeline {
     agent any
+    tools {
+        maven 'maven.15'
+    }
     environment {
         SONARQUBE_ENV = 'SonarQube' // Must match Jenkins SonarQube config name
     }
