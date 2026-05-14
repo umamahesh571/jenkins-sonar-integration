@@ -16,7 +16,7 @@ Term	             Explanation
 Bug	               Code that can cause crashes or incorrect results
 Vulnerability	   Security risks in the code
 Code Smell	       Poor coding practices that may lead to bugs
-Coverage	         How much of the code is tested via unit tests
+Coverage	       How much of the code is tested via unit tests
 Duplication	       Repeated code that should be refactored
 Maintainability	   Ease with which code can be maintained and updated
 Technical Debt	   Future work required to fix poor design or implementation
