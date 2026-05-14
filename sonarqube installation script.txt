@@ -1,3 +1,6 @@
+SONARQUBE CLASS NOTES
+
+
 CODE Review:validating the code wether  it is written as per standard guidelince
 
 CODE COVERAGE:
@@ -10,13 +13,13 @@ SONARQUBE:
 it is continuous code quality management tool which continuously analyse and measures the quality of the code .
 
 Term	             Explanation
-Bug	               Code that can cause crashes or incorrect results
+Bug	             Code that can cause crashes or incorrect results
 Vulnerability	     Security risks in the code
-Code Smell	       Poor coding practices that may lead to bugs
-Coverage	         How much of the code is tested via unit tests
-Duplication	       Repeated code that should be refactored
-Maintainability	   Ease with which code can be maintained and updated
-Technical Debt	   Future work required to fix poor design or implementation
+Code Smell	     Poor coding practices that may lead to bugs
+Coverage	     How much of the code is tested via unit tests
+Duplication	     Repeated code that should be refactored
+Maintainability	     Ease with which code can be maintained and updated
+Technical Debt	     Future work required to fix poor design or implementation
 
 
 
@@ -49,73 +52,133 @@ search engine:
 
 SONARQUBE INSTALLATION:
 ======================
-vi install_sonarqube_clean.sh
+sudo su -       ----switch to root user
 
+vi sonar.sh   -- it will open one file --press i and copy the content between dotted line
 
+-----------------------------------------------------------------------------------------
 #!/bin/bash
 
 set -e
 
-# SonarQube version
-SONARQUBE_VERSION="10.4.1.88267"
-SONARQUBE_ZIP="sonarqube-${SONARQUBE_VERSION}.zip"
-SONARQUBE_DIR="/opt/sonarqube"
+SONAR_VERSION="25.4.0.105899"
+SONAR_USER="sonarqube"
+SONAR_DIR="/opt/sonarqube"
 
-echo "🔧 Installing Java 17 and utilities..."
-sudo apt update
-sudo apt install -y openjdk-17-jdk wget unzip
+echo "========== Updating Server =========="
+apt update -y
 
-echo "👤 Creating sonar user..."
-sudo useradd -r -s /bin/false sonar || true
+echo "========== Installing Required Packages =========="
+apt install openjdk-21-jdk unzip wget curl ufw -y
 
-echo "⬇️ Downloading SonarQube..."
-wget -q https://binaries.sonarsource.com/Distribution/sonarqube/${SONARQUBE_ZIP} -P /tmp
+echo "========== Verifying Java =========="
+java -version
 
-echo "📦 Extracting..."
-sudo unzip -q /tmp/${SONARQUBE_ZIP} -d /opt/
-sudo mv /opt/sonarqube-${SONARQUBE_VERSION} $SONARQUBE_DIR
-sudo chown -R sonar:sonar $SONARQUBE_DIR
+echo "========== Configuring Kernel Parameters =========="
+grep -q "vm.max_map_count=524288" /etc/sysctl.conf || echo "vm.max_map_count=524288" >> /etc/sysctl.conf
+grep -q "fs.file-max=131072" /etc/sysctl.conf || echo "fs.file-max=131072" >> /etc/sysctl.conf
 
-echo "🛠️ Configuring system settings..."
-sudo sysctl -w vm.max_map_count=262144
-echo "vm.max_map_count=262144" | sudo tee -a /etc/sysctl.conf
+sysctl -p
 
-echo "📝 Creating systemd service..."
-sudo tee /etc/systemd/system/sonarqube.service > /dev/null <<EOF
+echo "========== Creating Sonar User =========="
+id -u $SONAR_USER &>/dev/null || useradd -r -m -d $SONAR_DIR -s /bin/bash $SONAR_USER
+
+grep -q "$SONAR_USER   -   nofile   131072" /etc/security/limits.conf || \
+echo "$SONAR_USER   -   nofile   131072" >> /etc/security/limits.conf
+
+grep -q "$SONAR_USER   -   nproc   8192" /etc/security/limits.conf || \
+echo "$SONAR_USER   -   nproc   8192" >> /etc/security/limits.conf
+
+echo "========== Cleaning Old Installation =========="
+rm -rf /opt/sonarqube*
+rm -f /opt/sonarqube-*.zip
+
+echo "========== Downloading SonarQube =========="
+cd /opt
+
+wget https://binaries.sonarsource.com/Distribution/sonarqube/sonarqube-${SONAR_VERSION}.zip
+
+echo "========== Extracting SonarQube =========="
+unzip sonarqube-${SONAR_VERSION}.zip
+
+mv sonarqube-${SONAR_VERSION} sonarqube
+
+chown -R $SONAR_USER:$SONAR_USER $SONAR_DIR
+
+echo "========== Configuring SonarQube =========="
+cat <<EOF > $SONAR_DIR/conf/sonar.properties
+sonar.web.host=0.0.0.0
+sonar.web.port=9000
+EOF
+
+echo "========== Setting Run User =========="
+sed -i "s/#RUN_AS_USER=/RUN_AS_USER=$SONAR_USER/" \
+$SONAR_DIR/bin/linux-x86-64/sonar.sh
+
+echo "========== Creating Systemd Service =========="
+cat <<EOF > /etc/systemd/system/sonarqube.service
 [Unit]
 Description=SonarQube Service
 After=network.target
 
 [Service]
 Type=forking
-ExecStart=$SONARQUBE_DIR/bin/linux-x86-64/sonar.sh start
-ExecStop=$SONARQUBE_DIR/bin/linux-x86-64/sonar.sh stop
-User=sonar
-Group=sonar
+ExecStart=$SONAR_DIR/bin/linux-x86-64/sonar.sh start
+ExecStop=$SONAR_DIR/bin/linux-x86-64/sonar.sh stop
+User=$SONAR_USER
+Group=$SONAR_USER
 Restart=always
-LimitNOFILE=65536
-LimitNPROC=4096
-TimeoutSec=60
+LimitNOFILE=131072
+LimitNPROC=8192
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
-echo "🔁 Reloading and starting SonarQube..."
-sudo systemctl daemon-reload
-sudo systemctl enable sonarqube
-sudo systemctl start sonarqube
+echo "========== Opening Port 9000 =========="
+ufw allow 9000/tcp || true
+ufw --force enable || true
+ufw reload || true
 
-echo "✅ Installation complete!"
-echo "🌐 Access SonarQube at: http://<your-server-ip>:9000"
-echo "🔑 Default credentials: admin / admin"
+echo "========== Starting SonarQube =========="
+systemctl daemon-reload
+systemctl enable sonarqube
+systemctl restart sonarqube
 
-chmod +x install_sonarqube_clean.sh
+echo "Waiting for SonarQube startup..."
+sleep 60
 
-sudo ./install_sonarqube_clean.sh
+echo "========== Service Status =========="
+systemctl status sonarqube --no-pager
+
+SERVER_IP=$(curl -s ifconfig.me)
+
+echo ""
+echo "=================================================="
+echo " SonarQube Installation Completed Successfully"
+echo " URL: http://$SERVER_IP:9000"
+echo " Username: admin"
+echo " Password: admin"
+echo "=================================================="
+-----------------------------------------------------------------------------------------
+
+after copying content in the file -- press esc and type :wq --enter
+
+chmod +x sonar.sh
+
+bash sonar.sh
 
 
-ENABLE 9000 PORT
+ENABLE 9000 PORT in aws (edit inbound rules)
+
+(select the security group--> edit inbound rules--->click on add rule -->custom tcp--->9000-->0.0.0.0/0 ---save rule)
+
+now in browser try to access with 
+
+publicip:9000
+
+default username :admin
+        password :admin
 
 change password
 
@@ -138,11 +201,12 @@ my account  --->security ---> genrate token
 name: jenkins-server type: user : exp: 30 days --> generate token
 
 only once visible  copy and  save it safey.
-
+squ_*********************************
 
 
 Integration with jenkins:
 
+Inastall sonaqube scanner plugin and jacoco plugin
 
 Manage jenkins --> configurations -->sonarqube installations --> add sonarqube-->
 
@@ -151,7 +215,7 @@ Server URL: http://54.255.190.218:9000
 Server authentication token: add --->kind : secrettext --> secret:paste the token generated --> id : sonar-token --> save
 
 
-Manage jenkins --> tools --> SonarQube Scanner installations --> Add SonarQube Scanner --> name: sonarqube scanner ,,click on install automatically--> save
+Manage jenkins --> tools --> SonarQube Scanner installations --> Add SonarQube Scanner --> name: sonarqube-scanner ,,click on install automatically--> save
 
 
 now create pipeline job and excute the pipeline build.
@@ -162,30 +226,40 @@ check the sonarqube dashboard--> projects.
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-stage('Quality Gate Check') {
+    stage('Build + Sonar Report + Quality Gate') {
             steps {
-                timeout(time: 2, unit: 'MINUTES') {
-                    waitForQualityGate abortPipeline: true
+                script {
+                    withSonarQubeEnv('SonarQube') {
+                        
+                        sh 'mvn clean  sonar:sonar'
+                    }
+
+                    timeout(time: 5, unit: 'MINUTES') {
+                        def qg = waitForQualityGate()
+
+                        if (qg.status != 'OK') {
+                            error "Build Failed: Quality Gate Status -> ${qg.status}"
+                        }
+                    }
                 }
             }
         }
+
+
+
+this stage with webhook in sonarqube will informs jenkins whenever report is ready, based on the report jenkins will take the call to proceed or abort the pipeline
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
